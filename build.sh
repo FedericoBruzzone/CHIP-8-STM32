@@ -1,6 +1,7 @@
 #!/bin/bash
 
 export C_INCLUDE_PATH=/opt/st/stm32cubeide_1.13.1/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.11.3.rel1.linux64_1.1.0.202305231506/tools/arm-none-eabi/include
+export PATH="$PATH:/opt/st/stm32cubeide_1.13.1/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.11.3.rel1.linux64_1.1.0.202305231506/tools/bin" # /arm-none-eabi-gcc
 
 if [[ $1 == "clean" ]]; then
     echo "Cleaning";
