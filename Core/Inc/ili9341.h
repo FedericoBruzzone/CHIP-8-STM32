@@ -1,13 +1,7 @@
 #ifndef ILI9341_H
 #define ILI9341_H
 
-#include "stm32f3xx_hal.h"
-#include <stdint.h>
-
-
-
-
-#include "chip8.h"
+// #include "chip8.h"
 #include "stm32f3xx_hal.h"
 #include "stm32f3xx_hal_gpio.h"
 #include <stdarg.h> //for va_list var arg functions
@@ -26,11 +20,10 @@ struct ILI9341_Pin_t {
 struct ILI9341_t {
   struct ILI9341_Pin_t DATA[8];
   struct ILI9341_Pin_t RST, // Reset
-                       CS, // Chip Select
-                       RS, // Register Select (D/CX), it can be Data (1) or Command (0)
-                       WR, // Write
-                       RD; // Read
-                           //
+      CS,                   // Chip Select
+      RS, // Register Select (D/CX), it can be Data (1) or Command (0)
+      WR, // Write
+      RD; // Read
   UART_HandleTypeDef huart2;
 };
 
@@ -104,8 +97,14 @@ static inline uint16_t ILI9341_RgbTo565(uint8_t r, uint8_t g, uint8_t b) {
 void PIN_LOW_METAL(struct ILI9341_Pin_t p);
 void PIN_HIGH_METAL(struct ILI9341_Pin_t p);
 void ILI9341_TestScreen(struct ILI9341_t *ili, unsigned char screen[]);
-void ILI9341_TestScreen2(struct ILI9341_t *ili, unsigned char screen[], int scale);
-void ILI9341_TestScreenArea(struct ILI9341_t *ili, unsigned char screen[], int scale, uint8_t x, uint8_t y, uint8_t n, uint8_t w);
-void ILI9341_TestScreenMetal(struct ILI9341_t *ili, unsigned char screen[], int scale);
+void ILI9341_TestScreen2(struct ILI9341_t *ili, unsigned char screen[],
+                         int scale);
+void ILI9341_TestScreenArea(struct ILI9341_t *ili, unsigned char screen[],
+                            int scale, uint8_t x, uint8_t y, uint8_t n,
+                            uint8_t w);
+void ILI9341_TestScreenMetal(struct ILI9341_t *ili, unsigned char screen[],
+                             int scale);
 
+void ILI9341_WriteChar(struct ILI9341_t *ili, unsigned char screen[], int RX, int RY,
+                  int FH, int FW);
 #endif

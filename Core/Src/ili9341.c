@@ -3,9 +3,6 @@
 #include "stm32f3xx_hal.h"
 #include <stdint.h>
 
-
-
-
 #define PIN_LOW(p) HAL_GPIO_WritePin(p.port, p.pin, GPIO_PIN_RESET)
 #define PIN_HIGH(p) HAL_GPIO_WritePin(p.port, p.pin, GPIO_PIN_SET)
 
@@ -28,7 +25,6 @@
     WR_ACTIVE(ili);                                                            \
     WR_IDLE(ili);                                                              \
   }
-
 
 inline static void ILI9341_ConfigurePinForOutput(struct ILI9341_Pin_t p) {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -463,9 +459,7 @@ void PIN_LOW_METAL(struct ILI9341_Pin_t p) {
   p.port->BSRR = (uint32_t)p.pin << 16U;
 }
 
-void PIN_HIGH_METAL(struct ILI9341_Pin_t p) {
-  p.port->BSRR = p.pin;
-}
+void PIN_HIGH_METAL(struct ILI9341_Pin_t p) { p.port->BSRR = p.pin; }
 
 static void ILI9341_WriteToDataPinsMetal(struct ILI9341_t *ili, uint8_t b) {
   for (int i = 0; i < 8; i++) {
@@ -485,7 +479,7 @@ static void ILI9341_WriteDataMetal(struct ILI9341_t *ili, uint8_t data) {
 }
 
 void ILI9341_TestScreenMetal(struct ILI9341_t *ili, unsigned char screen[],
-                         int scale) {
+                             int scale) {
   int RX = 32;
   int RY = 52;
   int CX = SCREEN_WIDTH * scale - 1 + RX;
@@ -496,7 +490,7 @@ void ILI9341_TestScreenMetal(struct ILI9341_t *ili, unsigned char screen[],
   int ROW_LEN = SCREEN_WIDTH / 8; // 128 / 8 = 16;
   unsigned char ROW[ROW_LEN];
 
-  for (int ch = 0; ch < SCREEN_SIZE;  ch++) {
+  for (int ch = 0; ch < SCREEN_SIZE; ch++) {
     ROW[ch % ROW_LEN] = screen[ch];
     if ((ch + 1) % ROW_LEN == 0) {
       for (int sy = 0; sy < scale; sy++) {
@@ -518,36 +512,23 @@ void ILI9341_TestScreenMetal(struct ILI9341_t *ili, unsigned char screen[],
   }
 }
 
-// void ILI9341_TestScreenArea(struct ILI9341_t *ili, unsigned char screen[], int scale, uint8_t x, uint8_t y, uint8_t n, uint8_t w) {
-//   int RX = 32 + x * scale;
-//   int RY = 52 + y * scale;
-//   int CX = SCREEN_WIDTH * scale - 1 + RX - (w - 1) * scale;
-//   int CY = SCREEN_HEIGHT * scale - 1 + RY - (n - 1) * scale;
-//   ILI9341_SetDrawingArea(ili, RX, CX, RY, CY);
-//   ILI9341_WriteCommand(ili, CMD_MEMORY_WRITE);
-//
-//   int ROW_LEN = SCREEN_WIDTH / 8; // 128 / 8 = 16;
-//   unsigned char ROW[ROW_LEN];
-//
-//   for (int ch = 0; ch < SCREEN_SIZE; ch++) {
-//     ROW[ch % ROW_LEN] = screen[ch];
-//     if ((ch + 1) % ROW_LEN == 0) {
-//       for (int sy = 0; sy < scale; sy++) {
-//         for (int r = 0; r < ROW_LEN; r++) {
-//           for (int p = 0; p < 8; p++) {
-//             for (int sx = 0; sx < scale; sx++) {
-//               if (!!((ROW[r] << p) & 0x80) == 1) {
-//                 ILI9341_WriteData(ili, 0xFFFF >> 8);
-//                 ILI9341_WriteData(ili, 0xFFFF);
-//               } else {
-//                 ILI9341_WriteData(ili, 0x0000 >> 8);
-//                 ILI9341_WriteData(ili, 0x0000);
-//               }
-//             }
-//           }
-//         }
-//       }
-//     }
-//   }
-// }
-//
+void ILI9341_WriteChar(struct ILI9341_t *ili, unsigned char screen[], int RX, int RY,
+                  int FW, int FH) {
+  int CX = FW + RX - 1;
+  int CY = FH + RY - 1;
+  ILI9341_SetDrawingArea(ili, RX, CX, RY, CY);
+  ILI9341_WriteCommand(ili, CMD_MEMORY_WRITE);
+
+  for (int sy = 0; sy < FH; sy++) {
+    for (int sx = 0; sx < 8; sx++) {
+      if (!!((screen[sy] << sx) & 0x80) == 1) {
+        ILI9341_WriteData(ili, 0xFFFF >> 8);
+        ILI9341_WriteData(ili, 0xFFFF);
+      } else {
+        ILI9341_WriteData(ili, 0x0000 >> 8);
+        ILI9341_WriteData(ili, 0x0000);
+      }
+    }
+  }
+
+}

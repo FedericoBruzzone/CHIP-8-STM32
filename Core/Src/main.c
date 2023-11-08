@@ -23,13 +23,18 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "chip8.h"
+#include "config.h"
+#include "utils.h"
 #include "ili9341.h"
+#include "matrix_keypad_4x4.h"
 #include "stm32f3xx_hal.h"
 #include "stm32f3xx_hal_gpio.h"
 #include <stdarg.h> //for va_list var arg functions
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -39,23 +44,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define LCD_D0 .port = GPIOA, .pin = GPIO_PIN_9
-#define LCD_D1 .port = GPIOC, .pin = GPIO_PIN_7
-#define LCD_D2 .port = GPIOA, .pin = GPIO_PIN_10
-#define LCD_D3 .port = GPIOB, .pin = GPIO_PIN_3
-#define LCD_D4 .port = GPIOB, .pin = GPIO_PIN_5
-#define LCD_D5 .port = GPIOB, .pin = GPIO_PIN_4
-#define LCD_D6 .port = GPIOB, .pin = GPIO_PIN_10
-#define LCD_D7 .port = GPIOA, .pin = GPIO_PIN_8
-
-#define LCD_RD .port = GPIOA, .pin = GPIO_PIN_0 // INPUT
-#define LCD_WR .port = GPIOA, .pin = GPIO_PIN_1
-#define LCD_RS .port = GPIOA, .pin = GPIO_PIN_4
-#define LCD_CS .port = GPIOB, .pin = GPIO_PIN_0
-#define LCD_RESET .port = GPIOC, .pin = GPIO_PIN_1
-
-#define BEEPER .port = GPIOB, .pin = GPIO_PIN_13
-Chip8 vm;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -78,28 +66,12 @@ static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
-void myprintf(const char *fmt, ...);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void myprintf(const char *fmt, ...) {
-  static char buffer[256];
-  va_list args;
-  va_start(args, fmt);
-  vsnprintf(buffer, sizeof(buffer), fmt, args);
-  va_end(args);
-
-  int len = strlen(buffer);
-  HAL_UART_Transmit(&huart2, (uint8_t *)buffer, len, -1);
-}
-
-// ===== Keypad
-GPIO_InitTypeDef GPIO_InitStructPrivate = {0};
-uint32_t previousMillis = 0;
-uint32_t currentMillis = 0;
-uint8_t pressed_key = 0;
-
+Chip8 vm;
+struct ILI9341_t lcd;
 /* USER CODE END 0 */
 
 /**
@@ -108,7 +80,6 @@ uint8_t pressed_key = 0;
  */
 int main(void) {
   /* USER CODE BEGIN 1 */
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -134,8 +105,8 @@ int main(void) {
   MX_USART2_UART_Init();
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
-  // ========== Display
-  struct ILI9341_t lcd;
+  Uart_Init(huart2);
+  Keypad_Init(&vm);
   ILI9341_Init(&lcd, (struct ILI9341_Pin_t){LCD_D7},
                (struct ILI9341_Pin_t){LCD_D6}, (struct ILI9341_Pin_t){LCD_D5},
                (struct ILI9341_Pin_t){LCD_D4}, (struct ILI9341_Pin_t){LCD_D3},
@@ -147,12 +118,9 @@ int main(void) {
                (struct ILI9341_Pin_t){LCD_WR}, (struct ILI9341_Pin_t){LCD_RD});
   ILI9341_SendInitializationSequence(&lcd);
   ILI9341_SetOrientation(&lcd, HORIZONTAL);
-  // ILI9341_FillScreen(&lcd, ILI9341_RgbTo565(50, 50, 50));
   ILI9341_FillScreen(&lcd, ILI9341_RgbTo565(255, 0, 0));
-  // ILI9341_FillScreen(&lcd, ILI9341_RgbTo565(0, 255, 0));
-  // ILI9341_FillScreen(&lcd, ILI9341_RgbTo565(0, 0, 255));
   // ========== SD
-  myprintf("\r\n~ SD card demo by kiwih ~\r\n\r\n");
+  Uart_print("\r\n~ SD card demo by kiwih ~\r\n\r\n");
 
   HAL_Delay(1000); // a short delay is important to let the SD card settle
 
@@ -164,7 +132,7 @@ int main(void) {
   // Open the file system
   fres = f_mount(&FatFs, "", 1); // 1=mount now
   if (fres != FR_OK) {
-    myprintf("f_mount error (%i)\r\n", fres);
+    Uart_print("f_mount error (%i)\r\n", fres);
     while (1)
       ;
   }
@@ -194,7 +162,7 @@ int main(void) {
               ((fno.fattrib & AM_HID) ? 'H' : '-'), (int)fno.fsize, path,
               fno.fname);
 
-      myprintf(string);
+      Uart_print(string);
       // puts(string);
     }
   }
@@ -223,22 +191,23 @@ int main(void) {
   // Now let's try to open file "test.txt"
   // fres = f_open(&fil, "1-CHIP~1.CH8", FA_READ);
   // fres = f_open(&fil, "6-KEYPAD.CH8", FA_READ);
-  // fres = f_open(&fil, "Tetris~1.CH8", FA_READ);
+  fres = f_open(&fil, "Tetris~1.CH8", FA_READ);
   // fres = f_open(&fil, "SCHIP_~1.CH8", FA_READ);
-  fres = f_open(&fil, "SpaceI~1.CH8", FA_READ);
+  // fres = f_open(&fil, "SpaceI~1.CH8", FA_READ);
 
   if (fres != FR_OK) {
-    myprintf("f_open error (%i)\r\n");
+    Uart_print("f_open error (%i)\r\n");
     while (1)
       ;
   }
-  myprintf("I was able to open 'test.txt' for reading!\r\n");
+  Uart_print("I was able to open 'test.txt' for reading!\r\n");
 
   // We can either use f_read OR f_gets to get data out of files
   // f_gets is a wrapper on f_read that does some string formatting for us
   //	    TCHAR* rres = f_gets((TCHAR*)readBuf, 30, &fil);
   //    if(rres != 0) {
-  //  	myprintf("Read string from 'test.txt' contents: %s\r\n", readBuf);
+  //  	myprintf("Read string from 'test.txt' contents: %s\r\n",
+  //  readBuf);
   //    } else {
   //  	myprintf("f_gets error (%i)\r\n", fres);
   //    }
@@ -252,23 +221,23 @@ int main(void) {
   FRESULT tmp = f_read(&fil, data, (UINT)size, &bytesRead);
 
   if (tmp == FR_OK) {
-    myprintf("File successfully read!");
-    myprintf("%d bytes read", bytesRead);
-    myprintf("\r\n");
+    Uart_print("File successfully read!");
+    Uart_print("%d bytes read", bytesRead);
+    Uart_print("\r\n");
     for (int i = 0; i < bytesRead; i++) {
       //    		myprintf("data[%d]: 0x%c \r\n", i, data[i]);
-      myprintf("%x ", data[i]);
+      Uart_print("%x ", data[i]);
     }
 
   } else {
-    myprintf("f_gets error (%i)\r\n", fres);
+    Uart_print("f_gets error (%i)\r\n", fres);
   }
   // Be a tidy kiwi - don't forget to close your file!
   f_close(&fil);
 
   // ========================== HADLE CHIP8
   // ./chip8 10 1200 ./ROMs/games/ALIEN
-  myprintf("\n\r========================== HADLE CHIP8\r\n");
+  Uart_print("\n\r========================== HADLE CHIP8\r\n");
   // Chip8 vm;
   int emu_freq = 1200; // 72000;               // 1200;
   c8_init(&vm, emu_freq, P_CHIP8, HAL_GetTick());
@@ -295,6 +264,17 @@ int main(void) {
   //   HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_13);
   //   HAL_Delay(100);
   // }
+
+   unsigned char font[] = {
+    // Standard 8x5 font
+    // 0xF0, 0x90, 0xF0, 0x90, 0xF0,  // 8
+                                   //
+    0x3C, 0x7E, 0xC3, 0xC3, 0x7E, 0x7E, 0xC3, 0xC3, 0x7E, 0x3C,  // 8
+  };
+
+  ILI9341_WriteChar(&lcd, font, 100, 100, 8, 10);
+
+  while(1) {}
 
   int i = 0;
   while (1) {
@@ -366,7 +346,7 @@ int main(void) {
   }
 
 unknown_opcode:
-  myprintf("Unknown opcode: 0x%04X\n", vm.opcode);
+  Uart_print("Unknown opcode: 0x%04X\n", vm.opcode);
   return 1;
 
   // ======================================
@@ -390,8 +370,8 @@ void SystemClock_Config(void) {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-  /** Initializes the RCC Oscillators according to the specified parameters
-   * in the RCC_OscInitTypeDef structure.
+  /** Initializes the RCC Oscillators according to the specified
+   * parameters in the RCC_OscInitTypeDef structure.
    */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
@@ -573,318 +553,9 @@ static void MX_GPIO_Init(void) {
 
 /* USER CODE BEGIN 4 */
 
-typedef struct Keypad_Pin_t {
-  GPIO_TypeDef *port;
-  uint16_t pin;
-} Keypad_Pin_t;
-// ROWS (EXTI)
-Keypad_Pin_t R1 = {.port = GPIOA, .pin = GPIO_PIN_12};
-Keypad_Pin_t R2 = {.port = GPIOA, .pin = GPIO_PIN_11};
-Keypad_Pin_t R3 = {.port = GPIOB, .pin = GPIO_PIN_15};
-Keypad_Pin_t R4 = {.port = GPIOB, .pin = GPIO_PIN_14};
-
-Keypad_Pin_t C1 = {.port = GPIOB, .pin = GPIO_PIN_12};
-Keypad_Pin_t C2 = {.port = GPIOB, .pin = GPIO_PIN_11};
-Keypad_Pin_t C3 = {.port = GPIOB, .pin = GPIO_PIN_2};
-Keypad_Pin_t C4 = {.port = GPIOB, .pin = GPIO_PIN_1};
-
-// POLLING row in input and column in output
-void HandleKeyPad() {
-  int DELAY = 30;
-
-  GPIO_InitStructPrivate.Pin = R1.pin | R2.pin;
-  GPIO_InitStructPrivate.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStructPrivate.Pull = GPIO_PULLUP;
-  GPIO_InitStructPrivate.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(R1.port, &GPIO_InitStructPrivate);
-
-  GPIO_InitStructPrivate.Pin = R3.pin | R4.pin;
-  GPIO_InitStructPrivate.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStructPrivate.Pull = GPIO_PULLUP;
-  GPIO_InitStructPrivate.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(R3.port, &GPIO_InitStructPrivate);
-
-  HAL_GPIO_WritePin(C1.port, C1.pin, 0);
-  HAL_GPIO_WritePin(C2.port, C2.pin, 1);
-  HAL_GPIO_WritePin(C3.port, C3.pin, 1);
-  HAL_GPIO_WritePin(C4.port, C4.pin, 1);
-
-  HAL_Delay(DELAY);
-
-  if (!HAL_GPIO_ReadPin(R1.port, R1.pin)) {
-    // myprintf("1");
-    c8_press_key(&vm, 1);
-  } else {
-    c8_release_key(&vm, 1);
-  }
-  if (!HAL_GPIO_ReadPin(R2.port, R2.pin)) {
-    // myprintf("4");
-    c8_press_key(&vm, 4);
-  } else {
-    c8_release_key(&vm, 4);
-  }
-  if (!HAL_GPIO_ReadPin(R3.port, R3.pin)) {
-    // myprintf("7");
-    c8_press_key(&vm, 7);
-  } else {
-    c8_release_key(&vm, 7);
-  }
-  if (!HAL_GPIO_ReadPin(R4.port, R4.pin)) {
-    // myprintf("A");
-    c8_press_key(&vm, 10);
-  } else {
-    c8_release_key(&vm, 10);
-  }
-
-  HAL_GPIO_WritePin(C1.port, C1.pin, 1);
-  HAL_GPIO_WritePin(C2.port, C2.pin, 0);
-  HAL_GPIO_WritePin(C3.port, C3.pin, 1);
-  HAL_GPIO_WritePin(C4.port, C4.pin, 1);
-
-  HAL_Delay(DELAY);
-
-  if (!HAL_GPIO_ReadPin(R1.port, R1.pin)) {
-    // myprintf("2");
-    c8_press_key(&vm, 2);
-  } else {
-    c8_release_key(&vm, 2);
-  }
-  if (!HAL_GPIO_ReadPin(R2.port, R2.pin)) {
-    // myprintf("5");
-    c8_press_key(&vm, 5);
-  } else {
-    c8_release_key(&vm, 5);
-  }
-  if (!HAL_GPIO_ReadPin(R3.port, R3.pin)) {
-    // myprintf("8");
-    c8_press_key(&vm, 8);
-  } else {
-    c8_release_key(&vm, 8);
-  }
-  if (!HAL_GPIO_ReadPin(R4.port, R4.pin)) {
-    // myprintf("0");
-    c8_press_key(&vm, 0);
-  } else {
-    c8_release_key(&vm, 0);
-  }
-
-  HAL_GPIO_WritePin(C1.port, C1.pin, 1);
-  HAL_GPIO_WritePin(C2.port, C2.pin, 1);
-  HAL_GPIO_WritePin(C3.port, C3.pin, 0);
-  HAL_GPIO_WritePin(C4.port, C4.pin, 1);
-
-  HAL_Delay(DELAY);
-  if (!HAL_GPIO_ReadPin(R1.port, R1.pin)) {
-    // myprintf("3");
-    c8_press_key(&vm, 3);
-  } else {
-    c8_release_key(&vm, 3);
-  }
-  if (!HAL_GPIO_ReadPin(R2.port, R2.pin)) {
-    // myprintf("6");
-    c8_press_key(&vm, 6);
-  } else {
-    c8_release_key(&vm, 6);
-  }
-  if (!HAL_GPIO_ReadPin(R3.port, R3.pin)) {
-    // myprintf("9");
-    c8_press_key(&vm, 9);
-  } else {
-    c8_release_key(&vm, 9);
-  }
-  if (!HAL_GPIO_ReadPin(R4.port, R4.pin)) {
-    // myprintf("B");
-    c8_press_key(&vm, 11);
-  } else {
-    c8_release_key(&vm, 11);
-  }
-
-  HAL_GPIO_WritePin(C1.port, C1.pin, 1);
-  HAL_GPIO_WritePin(C2.port, C2.pin, 1);
-  HAL_GPIO_WritePin(C3.port, C3.pin, 1);
-  HAL_GPIO_WritePin(C4.port, C4.pin, 0);
-
-  HAL_Delay(DELAY);
-
-  if (!HAL_GPIO_ReadPin(R1.port, R1.pin)) {
-    // myprintf("C");
-    c8_press_key(&vm, 12);
-  } else {
-    c8_release_key(&vm, 12);
-  }
-  if (!HAL_GPIO_ReadPin(R2.port, R2.pin)) {
-    // myprintf("D");
-    c8_press_key(&vm, 13);
-  } else {
-    c8_release_key(&vm, 13);
-  }
-  if (!HAL_GPIO_ReadPin(R3.port, R3.pin)) {
-    // myprintf("E");
-    c8_press_key(&vm, 14);
-  } else {
-    c8_release_key(&vm, 14);
-  }
-  if (!HAL_GPIO_ReadPin(R4.port, R4.pin)) {
-    // myprintf("F");
-    c8_press_key(&vm, 15);
-  } else {
-    c8_release_key(&vm, 15);
-  }
-
-  HAL_GPIO_WritePin(C1.port, C1.pin, 0);
-  HAL_GPIO_WritePin(C2.port, C2.pin, 0);
-  HAL_GPIO_WritePin(C3.port, C3.pin, 0);
-  HAL_GPIO_WritePin(C4.port, C4.pin, 0);
-}
-
-// COLUMNS
-//   5 pb3 -> pb1
-//   6 pb4 -> pb15
-//   7 pb5 -> pb14
-//   8 pb6 -> pb13
-
-//   1 pa6 -> pa12
-//   2 pa7 -> pa11
-//   3 pa8 -> pb12
-//   4 pa9 -> pb11
-
 // ===== Keypad
-// INTERRUPT
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-  currentMillis = HAL_GetTick();
-  if (currentMillis - previousMillis > 100) {
-    /*Configure GPIO pins : PB6 PB7 PB8 PB9 to GPIO_INPUT*/
-    GPIO_InitStructPrivate.Pin = R1.pin | R2.pin;
-    GPIO_InitStructPrivate.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStructPrivate.Pull = GPIO_NOPULL;
-    GPIO_InitStructPrivate.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(R1.port, &GPIO_InitStructPrivate);
-
-    GPIO_InitStructPrivate.Pin = R3.pin | R4.pin;
-    GPIO_InitStructPrivate.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStructPrivate.Pull = GPIO_NOPULL;
-    GPIO_InitStructPrivate.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(R3.port, &GPIO_InitStructPrivate);
-
-    HAL_GPIO_WritePin(C1.port, C1.pin, 1);
-    HAL_GPIO_WritePin(C2.port, C2.pin, 0);
-    HAL_GPIO_WritePin(C3.port, C3.pin, 0);
-    HAL_GPIO_WritePin(C4.port, C4.pin, 0);
-
-    if (GPIO_Pin == R1.pin && HAL_GPIO_ReadPin(R1.port, R1.pin)) {
-      pressed_key = 35; // ASCII value of #
-      myprintf("1");
-      c8_press_key(&vm, 1);
-    } else if (GPIO_Pin == R2.pin && HAL_GPIO_ReadPin(R2.port, R2.pin)) {
-      pressed_key = 57; // ASCII value of 9
-      myprintf("4");
-      c8_press_key(&vm, 4);
-    } else if (GPIO_Pin == R3.pin && HAL_GPIO_ReadPin(R3.port, R3.pin)) {
-      pressed_key = 54; // ASCII value of 6
-      myprintf("7");
-      c8_press_key(&vm, 7);
-    } else if (GPIO_Pin == R4.pin && HAL_GPIO_ReadPin(R4.port, R4.pin)) {
-      pressed_key = 51; // ASCII value of 3
-      myprintf("A");
-      c8_press_key(&vm, 10);
-    }
-
-    HAL_GPIO_WritePin(C1.port, C1.pin, 0);
-    HAL_GPIO_WritePin(C2.port, C2.pin, 1);
-    HAL_GPIO_WritePin(C3.port, C3.pin, 0);
-    HAL_GPIO_WritePin(C4.port, C4.pin, 0);
-
-    if (GPIO_Pin == R1.pin && HAL_GPIO_ReadPin(R1.port, R1.pin)) {
-      pressed_key = 35; // ASCII value of #
-      myprintf("2");
-      c8_press_key(&vm, 2);
-    } else if (GPIO_Pin == R2.pin && HAL_GPIO_ReadPin(R2.port, R2.pin)) {
-      pressed_key = 57; // ASCII value of 9
-      myprintf("5");
-      c8_press_key(&vm, 5);
-    } else if (GPIO_Pin == R3.pin && HAL_GPIO_ReadPin(R3.port, R3.pin)) {
-      pressed_key = 54; // ASCII value of 6
-      myprintf("8");
-      c8_press_key(&vm, 8);
-    } else if (GPIO_Pin == R4.pin && HAL_GPIO_ReadPin(R4.port, R4.pin)) {
-      pressed_key = 51; // ASCII value of 3
-      myprintf("0");
-      c8_press_key(&vm, 0);
-    }
-
-    HAL_GPIO_WritePin(C1.port, C1.pin, 0);
-    HAL_GPIO_WritePin(C2.port, C2.pin, 0);
-    HAL_GPIO_WritePin(C3.port, C3.pin, 1);
-    HAL_GPIO_WritePin(C4.port, C4.pin, 0);
-
-    if (GPIO_Pin == R1.pin && HAL_GPIO_ReadPin(R1.port, R1.pin)) {
-      pressed_key = 35; // ASCII value of #
-      myprintf("3");
-      c8_press_key(&vm, 3);
-    } else if (GPIO_Pin == R2.pin && HAL_GPIO_ReadPin(R2.port, R2.pin)) {
-      pressed_key = 57; // ASCII value of 9
-      myprintf("6");
-      c8_press_key(&vm, 6);
-    } else if (GPIO_Pin == R3.pin && HAL_GPIO_ReadPin(R3.port, R3.pin)) {
-      pressed_key = 54; // ASCII value of 6
-      myprintf("9");
-      c8_press_key(&vm, 9);
-    } else if (GPIO_Pin == R4.pin && HAL_GPIO_ReadPin(R4.port, R4.pin)) {
-      pressed_key = 51; // ASCII value of 3
-      myprintf("B");
-      c8_press_key(&vm, 11);
-    }
-
-    HAL_GPIO_WritePin(C1.port, C1.pin, 0);
-    HAL_GPIO_WritePin(C2.port, C2.pin, 0);
-    HAL_GPIO_WritePin(C3.port, C3.pin, 0);
-    HAL_GPIO_WritePin(C4.port, C4.pin, 1);
-
-    if (GPIO_Pin == R1.pin && HAL_GPIO_ReadPin(R1.port, R1.pin)) {
-      pressed_key = 35; // ASCII value of #
-      myprintf("C");
-      c8_press_key(&vm, 12);
-    } else if (GPIO_Pin == R2.pin && HAL_GPIO_ReadPin(R2.port, R2.pin)) {
-      pressed_key = 57; // ASCII value of 9
-      myprintf("D");
-      c8_press_key(&vm, 13);
-    } else if (GPIO_Pin == R3.pin && HAL_GPIO_ReadPin(R3.port, R3.pin)) {
-      pressed_key = 54; // ASCII value of 6
-      myprintf("E");
-      c8_press_key(&vm, 14);
-    } else if (GPIO_Pin == R4.pin && HAL_GPIO_ReadPin(R4.port, R4.pin)) {
-      pressed_key = 51; // ASCII value of 3
-      myprintf("F");
-      c8_press_key(&vm, 15);
-    }
-
-    HAL_GPIO_WritePin(C1.port, C1.pin, 1);
-    HAL_GPIO_WritePin(C2.port, C2.pin, 1);
-    HAL_GPIO_WritePin(C3.port, C3.pin, 1);
-    HAL_GPIO_WritePin(C4.port, C4.pin, 1);
-
-    GPIO_InitStructPrivate.Pin = R1.pin | R2.pin;
-    GPIO_InitStructPrivate.Mode = GPIO_MODE_IT_RISING;
-    GPIO_InitStructPrivate.Pull = GPIO_PULLDOWN;
-    GPIO_InitStructPrivate.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(R1.port, &GPIO_InitStructPrivate);
-
-    GPIO_InitStructPrivate.Pin = R3.pin | R4.pin;
-    GPIO_InitStructPrivate.Mode = GPIO_MODE_IT_RISING;
-    GPIO_InitStructPrivate.Pull = GPIO_PULLDOWN;
-    GPIO_InitStructPrivate.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(R3.port, &GPIO_InitStructPrivate);
-
-    //		GPIO_InitStructPrivate.Mode = GPIO_MODE_IT_RISING;
-    //		GPIO_InitStructPrivate.Pull = GPIO_PULLDOWN;
-    //		HAL_GPIO_Init(GPIOA, &GPIO_InitStructPrivate);
-
-    // for (int i = 0; i < 16; i++) {
-    //   myprintf("key[%d]: %d \r\n", i, vm.keypad[i]);
-    // }
-
-    previousMillis = currentMillis;
-  }
+  Interrupt_handle_keypad(GPIO_Pin);
 }
 /* USER CODE END 4 */
 
@@ -894,7 +565,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
  */
 void Error_Handler(void) {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state
+  /* User can add his own implementation to report the HAL error return
+   * state
    */
   __disable_irq();
   while (1) {
