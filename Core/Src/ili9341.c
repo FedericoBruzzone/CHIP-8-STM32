@@ -512,8 +512,8 @@ void ILI9341_TestScreenMetal(struct ILI9341_t *ili, unsigned char screen[],
   }
 }
 
-void ILI9341_WriteChar(struct ILI9341_t *ili, unsigned char screen[], int RX, int RY,
-                  int FW, int FH) {
+void ILI9341_WriteChar(struct ILI9341_t *ili, unsigned char *font, int RX,
+                       int RY, int FW, int FH) {
   int CX = FW + RX - 1;
   int CY = FH + RY - 1;
   ILI9341_SetDrawingArea(ili, RX, CX, RY, CY);
@@ -521,7 +521,7 @@ void ILI9341_WriteChar(struct ILI9341_t *ili, unsigned char screen[], int RX, in
 
   for (int sy = 0; sy < FH; sy++) {
     for (int sx = 0; sx < 8; sx++) {
-      if (!!((screen[sy] << sx) & 0x80) == 1) {
+      if (!!((font[sy] << sx) & 0x80) == 1) {
         ILI9341_WriteData(ili, 0xFFFF >> 8);
         ILI9341_WriteData(ili, 0xFFFF);
       } else {
@@ -530,5 +530,14 @@ void ILI9341_WriteChar(struct ILI9341_t *ili, unsigned char screen[], int RX, in
       }
     }
   }
+}
 
+void ILI9341_WriteString(struct ILI9341_t *ili, unsigned char **fonts, int RX,
+                         int RY, int FW, int FH, char *str) {
+  // for (int i = 0; i < strlen(str); i++) {
+  // ILI9341_WriteChar(ili, &fonts[i], RX + i * FW, RY, FW, FH);
+  // }
+  for (int i = 0; i < 40; i++) {
+    ILI9341_WriteChar(ili, fonts[i], 0 + i * 8, 0, 8, 10);
+  }
 }

@@ -105,6 +105,10 @@ void ILI9341_TestScreenArea(struct ILI9341_t *ili, unsigned char screen[],
 void ILI9341_TestScreenMetal(struct ILI9341_t *ili, unsigned char screen[],
                              int scale);
 
-void ILI9341_WriteChar(struct ILI9341_t *ili, unsigned char screen[], int RX, int RY,
-                  int FH, int FW);
+void ILI9341_WriteChar(struct ILI9341_t *ili, unsigned char *font, int RX,
+                       int RY, int FH, int FW);
+
+void ILI9341_WriteString(struct ILI9341_t *ili, unsigned char **fonts, int RX,
+                         int RY, int FW, int FH, char *str);
+
 #endif
