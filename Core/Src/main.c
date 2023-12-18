@@ -141,6 +141,10 @@ int main(void) {
   char *path;
   char string[128];
   FRESULT res;
+  // char *games[60];
+  char games[60][13];
+  int max_g_size = 0;
+  int g_size = 0;
 
   path = ""; // where you want to list
 
@@ -155,17 +159,22 @@ int main(void) {
       if ((res != FR_OK) || (fno.fname[0] == 0))
         break;
 
-      sprintf(string, "%c%c%c%c %10d %s/%s\r\n",
-              ((fno.fattrib & AM_DIR) ? 'D' : '-'),
-              ((fno.fattrib & AM_RDO) ? 'R' : '-'),
-              ((fno.fattrib & AM_SYS) ? 'S' : '-'),
-              ((fno.fattrib & AM_HID) ? 'H' : '-'), (int)fno.fsize, path,
-              fno.fname);
-
-      Uart_print(string);
+      // sprintf(string, "%c%c%c%c %10d %s/%s\r\n",
+      //         ((fno.fattrib & AM_DIR) ? 'D' : '-'),
+      //         ((fno.fattrib & AM_RDO) ? 'R' : '-'),
+      //         ((fno.fattrib & AM_SYS) ? 'S' : '-'),
+      //         ((fno.fattrib & AM_HID) ? 'H' : '-'), (int)fno.fsize, path,
+      //         fno.fname);
+      // Uart_print(string);
       // puts(string);
+
+      // games[g_size] = strdup(fno.fname);
+      // g_size++;
+      strcpy(games[g_size], fno.fname);
+      g_size++;
     }
   }
+
   // =========================================================
   /*
   //Let's get some statistics from the SD card
@@ -365,25 +374,26 @@ int main(void) {
   };
 
 
+  // ILI9341_WriteMenu(&lcd, 10, 95, &font, 8, 10, g_size, games, 0);
+  ILI9341_WriteMenu_array(&lcd, 10, 95, &font, 8, 10, g_size, &games, 0);
+
+  // for (int i = 0; i < g_size; i++) {
+  //     ILI9341_WriteString(&lcd, 10, 95, &font, 0, i * 10, 8, 10, games[i]);
+  // }
+
+  // char *str = " !\"#$%&'()*+"; //,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+  // ILI9341_WriteString(&lcd, 10, 95, &font, 32, 52, 8, 10, str);
 
   // for (int i = 0; i < 40; i++) {
   //   ILI9341_WriteChar(&lcd, &font[i], 0 + i * 8, 0, 8, 10);
   // }
+
   // for (int i = 0; i < 40; i++) {
-  //   ILI9341_WriteChar(&lcd, &font[i + 40], 0 + i * 8, 10, 8, 10);
+  //     ILI9341_WriteChar(&lcd, 10, &font[(int)str[i] - 32], 0 + i * 8, 0, 8, 10);
   // }
-  // for (int i = 0; i < 15; i++) {
-  //   ILI9341_WriteChar(&lcd, &font[i + 80], 0 + i * 8, 20, 8, 10);
-  // }
-  // ILI9341_WriteChar(&lcd, font[0], 100, 100, 8, 10);
 
-  // void ILI9341_WriteString(struct ILI9341_t *ili, unsigned char **font, int RX,
-  //                          int RY, int FW, int FH, char *str);
 
-  ILI9341_WriteString(&lcd, (unsigned char **)font, 0, 0, 8, 10, " !\"#$%&'()*+,-./");
-
-  // ILI9341_WriteChar(&lcd, font, 100, 100, 8, 5);
-
+  // TODO!!!
   while (1) {
   }
 

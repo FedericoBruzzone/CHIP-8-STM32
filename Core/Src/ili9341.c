@@ -512,8 +512,9 @@ void ILI9341_TestScreenMetal(struct ILI9341_t *ili, unsigned char screen[],
   }
 }
 
-void ILI9341_WriteChar(struct ILI9341_t *ili, unsigned char *font, int RX,
-                       int RY, int FW, int FH) {
+void ILI9341_WriteChar(struct ILI9341_t *ili, int f_width,
+                       unsigned char (*font)[f_width], int RX, int RY, int FW,
+                       int FH) {
   int CX = FW + RX - 1;
   int CY = FH + RY - 1;
   ILI9341_SetDrawingArea(ili, RX, CX, RY, CY);
@@ -521,7 +522,7 @@ void ILI9341_WriteChar(struct ILI9341_t *ili, unsigned char *font, int RX,
 
   for (int sy = 0; sy < FH; sy++) {
     for (int sx = 0; sx < 8; sx++) {
-      if (!!((font[sy] << sx) & 0x80) == 1) {
+      if (!!(((*font)[sy] << sx) & 0x80) == 1) {
         ILI9341_WriteData(ili, 0xFFFF >> 8);
         ILI9341_WriteData(ili, 0xFFFF);
       } else {
@@ -532,12 +533,28 @@ void ILI9341_WriteChar(struct ILI9341_t *ili, unsigned char *font, int RX,
   }
 }
 
-void ILI9341_WriteString(struct ILI9341_t *ili, unsigned char **fonts, int RX,
+void ILI9341_WriteString(struct ILI9341_t *ili, int f_width, int f_height,
+                         unsigned char (*fonts)[f_height][f_width], int RX,
                          int RY, int FW, int FH, char *str) {
-  // for (int i = 0; i < strlen(str); i++) {
-  // ILI9341_WriteChar(ili, &fonts[i], RX + i * FW, RY, FW, FH);
-  // }
-  for (int i = 0; i < 40; i++) {
-    ILI9341_WriteChar(ili, fonts[i], 0 + i * 8, 0, 8, 10);
+  for (int i = 0; i < strlen(str); i++) {
+    ILI9341_WriteChar(ili, f_width, &((*fonts)[(int)str[i] - 32]), RX + i * FW, RY,
+                      FW, FH);
+  }
+}
+
+void ILI9341_WriteMenu(struct ILI9341_t *ili, int f_width, int f_height,
+                       unsigned char (*fonts)[f_height][f_width], int FW,
+                       int FH, int g_size, char *games[g_size], int page) {
+  for (int i = 0; i < g_size; i++) {
+    ILI9341_WriteString(ili, f_width, f_height, fonts, 0, i * 10, FW, FH, games[i]);
+  }
+}
+
+
+void ILI9341_WriteMenu_array(struct ILI9341_t *ili, int f_width, int f_height,
+                       unsigned char (*fonts)[f_height][f_width], int FW,
+                       int FH, int g_size, char (*games)[g_size][13], int page) {
+  for (int i = 0; i < g_size; i++) {
+    ILI9341_WriteString(ili, f_width, f_height, fonts, 0, i * 10, FW, FH, (*games)[i]);
   }
 }
