@@ -244,36 +244,6 @@ int main(void) {
   // Be a tidy kiwi - don't forget to close your file!
   f_close(&fil);
 
-  // ========================== HADLE CHIP8
-  // ./chip8 10 1200 ./ROMs/games/ALIEN
-  Uart_print("\n\r========================== HADLE CHIP8\r\n");
-  // Chip8 vm;
-  int emu_freq = 1200; // 72000;               // 1200;
-  c8_init(&vm, emu_freq, P_CHIP8, HAL_GetTick());
-  c8_set_is_polling(&vm, false);
-
-  //	for (int i=0; i < size; i++){
-  //		vm.RAM[PC_OFFSET+i] = data[i];
-  //	}
-
-  memcpy(&vm.RAM[PC_OFFSET], data, size);
-  free(data);
-  // for (int i = 0; i < MAX_ROM_SIZE; i++) {
-  //   myprintf("%x ", vm.RSTM32F303x4-x6-xAM[i]);
-  // }
-
-  // int RX = 32;
-  // int RY = 52;
-  // int CX = SCREEN_WIDTH * 2 - 1 + RX;
-  // int CY = SCREEN_HEIGHT * 2 - 1 + RY;
-  // ILI9341_SetDrawingArea(&lcd, RX, CX, RY, CY);
-
-  // BEEPER
-  // while (1) {
-  //   HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_13);
-  //   HAL_Delay(100);
-  // }
-
   unsigned char font[][10] = {
       // Standard 8x10 font
       {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0},
@@ -373,15 +343,15 @@ int main(void) {
       {0x76, 0xdc, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0},
   };
 
-
   // ILI9341_WriteMenu(&lcd, 10, 95, &font, 8, 10, g_size, games, 0);
-  ILI9341_WriteMenu_array(&lcd, 10, 95, &font, 8, 10, g_size, &games, 0);
+  // ILI9341_WriteMenu_array(&lcd, 10, 95, &font, 8, 10, g_size, &games, 0);
 
   // for (int i = 0; i < g_size; i++) {
   //     ILI9341_WriteString(&lcd, 10, 95, &font, 0, i * 10, 8, 10, games[i]);
   // }
 
-  // char *str = " !\"#$%&'()*+"; //,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+  // char *str = " !\"#$%&'()*+";
+  // //,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
   // ILI9341_WriteString(&lcd, 10, 95, &font, 32, 52, 8, 10, str);
 
   // for (int i = 0; i < 40; i++) {
@@ -389,13 +359,81 @@ int main(void) {
   // }
 
   // for (int i = 0; i < 40; i++) {
-  //     ILI9341_WriteChar(&lcd, 10, &font[(int)str[i] - 32], 0 + i * 8, 0, 8, 10);
+  //     ILI9341_WriteChar(&lcd, 10, &font[(int)str[i] - 32], 0 + i * 8, 0, 8,
+  //     10);
   // }
 
+  char *modes[5] = {"CHIP8", "SCH10", "SCH11"};
+  char *freqs[5] = {"600", "1200", "1800", "2400"};
+  int i_modes = 0;
+  int i_freqs = 0;
+  int pages = 0;
 
-  // TODO!!!
   while (1) {
+    //if (pages < 0)
+    //  pages = 0;
+    //if (pages > g_size / 12)
+    //  pages = g_size / 12;
+
+    ILI9341_WriteMenu_array(&lcd, 10, 95, &font, 8, 10, g_size, &games, pages,
+                            modes[i_modes], freqs[i_freqs]);
+
+    for (int i = 0; i < 16; i++) {
+      if (vm.keypad[i]) {
+        switch (i) {
+        case 0:
+          i_modes = (i_modes + 1) % 3;
+          break;
+        case 7:
+          if (pages > 0){
+            pages = pages - 1;
+            ILI9341_FillScreen(&lcd, ILI9341_RgbTo565(255, 0, 0));
+          }
+          break;
+        case 8:
+          i_freqs = (i_freqs + 1) % 4;
+          break;
+        case 15:
+          if (pages < g_size / 12){
+            pages = pages + 1;
+            ILI9341_FillScreen(&lcd, ILI9341_RgbTo565(255, 0, 0));
+          }
+          break;
+        }
+        c8_release_key(&vm, i);
+      }
+    }
   }
+
+  // ========================== HADLE CHIP8
+  // ./chip8 10 1200 ./ROMs/games/ALIEN
+  Uart_print("\n\r========================== HADLE CHIP8\r\n");
+  // Chip8 vm;
+  int emu_freq = 1200; // 72000;               // 1200;
+  c8_init(&vm, emu_freq, P_CHIP8, HAL_GetTick());
+  c8_set_is_polling(&vm, false);
+
+  //	for (int i=0; i < size; i++){
+  //		vm.RAM[PC_OFFSET+i] = data[i];
+  //	}
+
+  memcpy(&vm.RAM[PC_OFFSET], data, size);
+  free(data);
+  // for (int i = 0; i < MAX_ROM_SIZE; i++) {
+  //   myprintf("%x ", vm.RSTM32F303x4-x6-xAM[i]);
+  // }
+
+  // int RX = 32;
+  // int RY = 52;
+  // int CX = SCREEN_WIDTH * 2 - 1 + RX;
+  // int CY = SCREEN_HEIGHT * 2 - 1 + RY;
+  // ILI9341_SetDrawingArea(&lcd, RX, CX, RY, CY);
+
+  // BEEPER
+  // while (1) {
+  //   HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_13);
+  //   HAL_Delay(100);
+  // }
 
   int i = 0;
   while (1) {

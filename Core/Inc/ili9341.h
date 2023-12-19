@@ -119,6 +119,7 @@ void ILI9341_WriteMenu(struct ILI9341_t *ili, int f_width, int f_height,
 
 
 void ILI9341_WriteMenu_array(struct ILI9341_t *ili, int f_width, int f_height,
-                       unsigned char (*fonts)[f_height][f_width], int FW,
-                       int FH, int g_size, char (*games)[g_size][13], int page);
+                             unsigned char (*fonts)[f_height][f_width], int FW,
+                             int FH, int g_size, char (*games)[g_size][13],
+                             int page, char mode[], char freq[]);
 #endif

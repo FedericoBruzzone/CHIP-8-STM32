@@ -537,8 +537,8 @@ void ILI9341_WriteString(struct ILI9341_t *ili, int f_width, int f_height,
                          unsigned char (*fonts)[f_height][f_width], int RX,
                          int RY, int FW, int FH, char *str) {
   for (int i = 0; i < strlen(str); i++) {
-    ILI9341_WriteChar(ili, f_width, &((*fonts)[(int)str[i] - 32]), RX + i * FW, RY,
-                      FW, FH);
+    ILI9341_WriteChar(ili, f_width, &((*fonts)[(int)str[i] - 32]), RX + i * FW,
+                      RY, FW, FH);
   }
 }
 
@@ -546,15 +546,63 @@ void ILI9341_WriteMenu(struct ILI9341_t *ili, int f_width, int f_height,
                        unsigned char (*fonts)[f_height][f_width], int FW,
                        int FH, int g_size, char *games[g_size], int page) {
   for (int i = 0; i < g_size; i++) {
-    ILI9341_WriteString(ili, f_width, f_height, fonts, 0, i * 10, FW, FH, games[i]);
+    ILI9341_WriteString(ili, f_width, f_height, fonts, 0, i * 10, FW, FH,
+                        games[i]);
   }
 }
 
-
 void ILI9341_WriteMenu_array(struct ILI9341_t *ili, int f_width, int f_height,
-                       unsigned char (*fonts)[f_height][f_width], int FW,
-                       int FH, int g_size, char (*games)[g_size][13], int page) {
-  for (int i = 0; i < g_size; i++) {
-    ILI9341_WriteString(ili, f_width, f_height, fonts, 0, i * 10, FW, FH, (*games)[i]);
+                             unsigned char (*fonts)[f_height][f_width], int FW,
+                             int FH, int g_size, char (*games)[g_size][13],
+                             int page, char mode[], char freq[]) {
+  char buttons[][16] = {"0", "1", "2", "3", "4", "5", "6", "7",
+                        "8", "9", "A", "B", "C", "D", "E", "F"};
+
+  int offset = page * 12;
+
+
+  char MODE[16] = "MODE: "; strcat(MODE, mode);
+  char FREQ[16] = "FREQ: "; strcat(FREQ, freq);
+
+  ILI9341_WriteString(ili, f_width, f_height, fonts, 32, 45, FW, FH,
+                      buttons[0]);
+  ILI9341_WriteString(ili, f_width, f_height, fonts, 32 + 16, 45, FW, FH, MODE);
+  for (int i = 0 + offset; i < 6 + offset; i++) {
+    if (i >= g_size) {
+      break;
+    }
+    ILI9341_WriteString(ili, f_width, f_height, fonts, 32,
+                        (i + 1 - offset) * 20 + 45, FW, FH,
+                        buttons[i + 1 - offset]);
+    ILI9341_WriteString(ili, f_width, f_height, fonts, 32 + 16,
+                        (i + 1 - offset) * 20 + 45, FW, FH, (*games)[i]);
   }
+  ILI9341_WriteString(ili, f_width, f_height, fonts, 32, 8 * 20 + 25, FW, FH,
+                      buttons[7]);
+  ILI9341_WriteString(ili, f_width, f_height, fonts, 32 + 16, 8 * 20 + 25, FW,
+                      FH, "PREV");
+
+  ILI9341_WriteString(ili, f_width, f_height, fonts, 32 * 5 + 8, 45, FW, FH,
+                      buttons[8]);
+  ILI9341_WriteString(ili, f_width, f_height, fonts, 32 * 5 + 8 + 16, 45, FW,
+                      FH, FREQ);
+  for (int i = 6 + offset; i < 12 + offset; i++) {
+    if (i >= g_size) {
+      break;
+    }
+    ILI9341_WriteString(ili, f_width, f_height, fonts, 32 * 5 + 8,
+                        (i - 6 - offset) * 20 + 65, FW, FH,
+                        buttons[i + 3 - offset]);
+    ILI9341_WriteString(ili, f_width, f_height, fonts, 32 * 5 + 8 + 16,
+                        (i - 6 - offset) * 20 + 65, FW, FH, (*games)[i]);
+  }
+  ILI9341_WriteString(ili, f_width, f_height, fonts, 32 * 5 + 8, 8 * 20 + 25,
+                      FW, FH, buttons[15]);
+  ILI9341_WriteString(ili, f_width, f_height, fonts, 32 * 5 + 8 + 16,
+                      8 * 20 + 25, FW, FH, "NEXT");
+
+  // for (int i = 0; i < g_size; i++) {
+  // ILI9341_WriteString(ili, f_width, f_height, fonts, 32 + 16, i * 20 + 60,
+  // FW, FH, (*games)[i]);
+  // }
 }
