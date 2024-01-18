@@ -254,120 +254,6 @@ void ILI9341_SetDrawingArea(struct ILI9341_t *ili, uint16_t x1, uint16_t x2,
   ILI9341_WriteData(ili, y2 & 0xff);
 }
 
-void ILI9341_DrawFramebufferScaled(struct ILI9341_t *ili,
-                                   uint16_t framebuffer[]) {
-
-  // Data transfer sync
-  {
-    CD_COMMAND(ili);
-    ILI9341_WriteData(ili, 0x00);
-    for (int i = 0; i < 3; i++) {
-      WR_ACTIVE(ili);
-      WR_IDLE(ili);
-    }
-  }
-
-// WARN: This assumes that D0 -> PA0, D1 -> PA1, D2 -> PA2 ... D7 -> PA7
-#define WRITE_DATA_DIRECT_TO_DATA_PINS(data)                                   \
-  GPIOA->ODR = ((uint16_t)(data)) | ili->RST.pin | ili->RD.pin | ili->RS.pin
-
-#define WRITE_COMMAND_DIRECT_TO_DATA_PINS(data)                                \
-  GPIOA->ODR = ((uint16_t)(data)) | ili->RST.pin | ili->RD.pin
-
-#define WR_IDLE_FAST(ili) GPIOA->BSRR = ili->WR.pin
-
-#define COLOR_AVERAGE(x, y) (uint16_t)(((uint32_t)(x) + (uint32_t)(y)) / 2)
-
-#define WRITE_PIXEL(p)                                                         \
-  WRITE_DATA_DIRECT_TO_DATA_PINS((uint8_t)((p) >> 8));                         \
-  WR_IDLE_FAST(ili);                                                           \
-  WRITE_DATA_DIRECT_TO_DATA_PINS((uint8_t)(p));                                \
-  WR_IDLE_FAST(ili);
-
-  const int FB_WIDTH = 160;
-  const int FB_HEIGHT = 144;
-  const int SCALED_WIDTH = 240;
-  const int SCALED_HEIGHT = 216;
-
-  const int OFF_X = 36;
-  {
-    ILI9341_WriteCommand(ili, CMD_COLUMN_ADDRESS_SET);
-
-    ILI9341_WriteData(ili, 0 + OFF_X);
-    ILI9341_WriteData(ili, 0 + OFF_X);
-
-    ILI9341_WriteData(ili, (SCALED_WIDTH - 1 + OFF_X) >> 8);
-    ILI9341_WriteData(ili, (SCALED_WIDTH - 1 + OFF_X) & 0xff);
-
-    ILI9341_WriteCommand(ili, CMD_PAGE_ADDRESS_SET);
-
-    ILI9341_WriteData(ili, 0);
-    ILI9341_WriteData(ili, 0);
-
-    ILI9341_WriteData(ili, (SCALED_HEIGHT - 1) >> 8);
-    ILI9341_WriteData(ili, (SCALED_HEIGHT - 1) & 0xff);
-  }
-
-  ILI9341_WriteCommand(ili, CMD_MEMORY_WRITE);
-
-  int i = 0;
-  HAL_Delay(1);
-  while (i < FB_WIDTH * FB_HEIGHT) {
-    for (int j = i; j < i + FB_WIDTH; j += 2) {
-      WRITE_PIXEL(framebuffer[j]);
-      WRITE_PIXEL(framebuffer[j + 1]);
-
-      // TODO: Calculate average color with the next pixel
-      WRITE_PIXEL(framebuffer[j + 1]);
-    }
-    i += FB_WIDTH;
-
-    for (int j = i; j < i + FB_WIDTH; j += 2) {
-      WRITE_PIXEL(framebuffer[j]);
-      WRITE_PIXEL(framebuffer[j + 1]);
-
-      // TODO: Calculate average color with the next pixel
-      WRITE_PIXEL(framebuffer[j + 1]);
-    }
-    i += FB_WIDTH;
-
-    // Approximated row for scaling
-    for (int j = i; j < i + FB_WIDTH; j += 2) {
-      WRITE_PIXEL(framebuffer[j]);
-      WRITE_PIXEL(framebuffer[j + 1]);
-
-      // TODO: Calculate average color between top-left, top-right, bottom-left,
-      // bottom-right pixels
-      WRITE_PIXEL(framebuffer[j + 1]);
-    }
-    // Don't step 'i' here because we haven't printed a "real" row!
-  }
-}
-
-// TODO: Not used
-uint32_t ILI9341_ReadID(struct ILI9341_t *ili) {
-  CS_ACTIVE(ili);
-
-  ILI9341_PrepareDataPinsForWriting(ili);
-  ILI9341_WriteCommand(ili, CMD_READ_ID4);
-
-  ILI9341_PrepareDataPinsForReading(ili);
-
-  uint32_t r = ILI9341_ReadData(ili);
-  r <<= 8;
-  r |= ILI9341_ReadData(ili);
-  r <<= 8;
-  r |= ILI9341_ReadData(ili);
-  r <<= 8;
-  r |= ILI9341_ReadData(ili);
-
-  ILI9341_PrepareDataPinsForWriting(ili);
-
-  CS_IDLE(ili);
-
-  return r;
-}
-
 void ILI9341_SetOrientation(struct ILI9341_t *ili, enum ILI9341_Orientation o) {
   uint8_t b = PARAM_FLAG_MEMORY_ACCESS_CONTROL_ROW_BGR;
   switch (o) {
@@ -403,7 +289,7 @@ void ILI9341_FillScreen(struct ILI9341_t *ili, uint16_t fill_color) {
 }
 
 // not scaled
-void ILI9341_TestScreen(struct ILI9341_t *ili, unsigned char screen[]) {
+void ILI9341_PrintScreen(struct ILI9341_t *ili, unsigned char screen[]) {
   ILI9341_SetDrawingArea(ili, 0, SCREEN_WIDTH - 1, 0, SCREEN_HEIGHT - 1);
   ILI9341_WriteCommand(ili, CMD_MEMORY_WRITE);
 
@@ -421,7 +307,7 @@ void ILI9341_TestScreen(struct ILI9341_t *ili, unsigned char screen[]) {
 }
 
 // scaled
-void ILI9341_TestScreen2(struct ILI9341_t *ili, unsigned char screen[],
+void ILI9341_PrintScreenScaled(struct ILI9341_t *ili, unsigned char screen[],
                          int scale) {
   int RX = 32;
   int RY = 52;
@@ -478,7 +364,7 @@ static void ILI9341_WriteDataMetal(struct ILI9341_t *ili, uint8_t data) {
   WR_IDLE(ili);
 }
 
-void ILI9341_TestScreenMetal(struct ILI9341_t *ili, unsigned char screen[],
+void ILI9341_PrintScreenMetal(struct ILI9341_t *ili, unsigned char screen[],
                              int scale) {
   int RX = 32;
   int RY = 52;
