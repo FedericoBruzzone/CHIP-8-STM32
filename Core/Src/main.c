@@ -200,16 +200,16 @@ int main(void) {
   // Now let's try to open file "test.txt"
   // fres = f_open(&fil, "1-CHIP~1.CH8", FA_READ);
   // fres = f_open(&fil, "6-KEYPAD.CH8", FA_READ);
-  fres = f_open(&fil, "Tetris~1.CH8", FA_READ);
   // fres = f_open(&fil, "SCHIP_~1.CH8", FA_READ);
   // fres = f_open(&fil, "SpaceI~1.CH8", FA_READ);
 
-  if (fres != FR_OK) {
-    Uart_print("f_open error (%i)\r\n");
-    while (1)
-      ;
-  }
-  Uart_print("I was able to open 'test.txt' for reading!\r\n");
+  // fres = f_open(&fil, "Tetris~1.CH8", FA_READ);
+  // if (fres != FR_OK) {
+  //   Uart_print("f_open error (%i)\r\n");
+  //   while (1)
+  //     ;
+  // }
+  // Uart_print("I was able to open 'test.txt' for reading!\r\n");
 
   // We can either use f_read OR f_gets to get data out of files
   // f_gets is a wrapper on f_read that does some string formatting for us
@@ -222,27 +222,27 @@ int main(void) {
   //    }
 
   // --------------------------------------------------------
-  unsigned char *data = NULL;
-
-  UINT bytesRead;
-  uint16_t size = f_size(&fil);
-  data = malloc(size);
-  FRESULT tmp = f_read(&fil, data, (UINT)size, &bytesRead);
-
-  if (tmp == FR_OK) {
-    Uart_print("File successfully read!");
-    Uart_print("%d bytes read", bytesRead);
-    Uart_print("\r\n");
-    for (int i = 0; i < bytesRead; i++) {
-      //    		myprintf("data[%d]: 0x%c \r\n", i, data[i]);
-      Uart_print("%x ", data[i]);
-    }
-
-  } else {
-    Uart_print("f_gets error (%i)\r\n", fres);
-  }
-  // Be a tidy kiwi - don't forget to close your file!
-  f_close(&fil);
+  // unsigned char *data = NULL;
+  //
+  // UINT bytesRead;
+  // uint16_t size = f_size(&fil);
+  // data = malloc(size);
+  // FRESULT tmp = f_read(&fil, data, (UINT)size, &bytesRead);
+  //
+  // if (tmp == FR_OK) {
+  //   Uart_print("File successfully read!");
+  //   Uart_print("%d bytes read", bytesRead);
+  //   Uart_print("\r\n");
+  //   for (int i = 0; i < bytesRead; i++) {
+  //     //    		myprintf("data[%d]: 0x%c \r\n", i, data[i]);
+  //     Uart_print("%x ", data[i]);
+  //   }
+  //
+  // } else {
+  //   Uart_print("f_gets error (%i)\r\n", fres);
+  // }
+  // // Be a tidy kiwi - don't forget to close your file!
+  // f_close(&fil);
 
   unsigned char font[][10] = {
       // Standard 8x10 font
@@ -364,17 +364,17 @@ int main(void) {
   // }
 
   char *modes[5] = {"CHIP8", "SCH10", "SCH11"};
-  char *freqs[5] = {"600", "1200", "1800", "2400"};
+  char *freqs[5] = {" 600", "1200", "1800", "2400"};
   int i_modes = 0;
   int i_freqs = 0;
   int pages = 0;
+  int game = -1;
 
-  while (1) {
-    //if (pages < 0)
-    //  pages = 0;
-    //if (pages > g_size / 12)
-    //  pages = g_size / 12;
+  for (int i = 0; i < 16; i++) {
+    c8_release_key(&vm, i);
+  }
 
+  while (game == -1) {
     ILI9341_WriteMenu_array(&lcd, 10, 95, &font, 8, 10, g_size, &games, pages,
                             modes[i_modes], freqs[i_freqs]);
 
@@ -399,19 +399,42 @@ int main(void) {
             ILI9341_FillScreen(&lcd, ILI9341_RgbTo565(255, 0, 0));
           }
           break;
+        default:
+            if (i >= 1 && i <= 6) {
+              game = i - 1 + pages * 12;
+            } else {
+              game = i - 9 + 6 + pages * 12;
+            }
+            break;
         }
-        c8_release_key(&vm, i);
+          c8_release_key(&vm, i);
       }
     }
   }
+
+
+  ILI9341_FillScreen(&lcd, ILI9341_RgbTo565(0, 255, 0));
+
+  int emu_freq = atoi(freqs[i_freqs]);
+  c8_init(&vm, emu_freq, i_modes, HAL_GetTick());
+  c8_set_is_polling(&vm, false);
+
+  fres = f_open(&fil, games[game], FA_READ);
+  unsigned char *data = NULL;
+  UINT bytesRead;
+  uint16_t size = f_size(&fil);
+  data = malloc(size);
+  FRESULT tmp = f_read(&fil, data, (UINT)size, &bytesRead);
+  f_close(&fil);
 
   // ========================== HADLE CHIP8
   // ./chip8 10 1200 ./ROMs/games/ALIEN
   Uart_print("\n\r========================== HADLE CHIP8\r\n");
   // Chip8 vm;
-  int emu_freq = 1200; // 72000;               // 1200;
-  c8_init(&vm, emu_freq, P_CHIP8, HAL_GetTick());
-  c8_set_is_polling(&vm, false);
+
+  // int emu_freq = 1200; // 72000;               // 1200;
+  // c8_init(&vm, emu_freq, P_CHIP8, HAL_GetTick());
+  // c8_set_is_polling(&vm, false);
 
   //	for (int i=0; i < size; i++){
   //		vm.RAM[PC_OFFSET+i] = data[i];

@@ -21,3 +21,22 @@ void Uart_print(const char *fmt, ...) {
   int len = strlen(buffer);
   HAL_UART_Transmit(&curr_huart2, (uint8_t *)buffer, len, -1);
 }
+
+char *ltrim(char *s)
+{
+    while(isspace(*s)) s++;
+    return s;
+}
+
+char *rtrim(char *s)
+{
+    char* back = s + strlen(s);
+    while(isspace(*--back));
+    *(back+1) = '\0';
+    return s;
+}
+
+char *trim(char *s)
+{
+    return rtrim(ltrim(s));
+}
