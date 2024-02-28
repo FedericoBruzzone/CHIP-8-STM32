@@ -345,7 +345,9 @@ void PIN_LOW_METAL(struct ILI9341_Pin_t p) {
   p.port->BSRR = (uint32_t)p.pin << 16U;
 }
 
-void PIN_HIGH_METAL(struct ILI9341_Pin_t p) { p.port->BSRR = p.pin; }
+void PIN_HIGH_METAL(struct ILI9341_Pin_t p) {
+    p.port->BSRR = p.pin;
+}
 
 static void ILI9341_WriteToDataPinsMetal(struct ILI9341_t *ili, uint8_t b) {
   for (int i = 0; i < 8; i++) {
