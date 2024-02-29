@@ -116,4 +116,7 @@ void c8_set_platform(Chip8 *vm, Platform plt);
 // Sets is_polling flag of the emulator. (Default: true)
 void c8_set_is_polling(Chip8 *vm, bool is_polling);
 
+// Returns true if the emulator is polling for key presses.
+int c8_release_all_keys(Chip8 *vm);
+
 #endif

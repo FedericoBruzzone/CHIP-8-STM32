@@ -35,7 +35,8 @@ This repository is licensed under the [GNU General Public License (GPL)](https:/
 
 ## Contact
 
-- Email: [federico.bruzzone.i@gmail.com] or [federico.bruzzone@studenti.unimi.it]
+If you have any questions, suggestions, or feedback, do not hesitate to [contact me](https://federicobruzzone.github.io/).
 
-- Email: [andrea.longoni3@studenti.unimi.it]
-
+Maintainers:
+  - [FedericoBruzzone](https://github.com/FedericoBruzzone)
+  - [Andreal2000](https://github.com/Andreal2000)
